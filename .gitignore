@@ -1,0 +1,9 @@
+# Build artifacts
+bin/
+.build-cache/
+
+# macOS
+.DS_Store
+
+# settings.json backups created by configure_stop_hook.py
+*.bak-*
