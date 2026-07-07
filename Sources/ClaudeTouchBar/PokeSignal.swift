@@ -13,4 +13,15 @@ enum PokeSignal {
         let attributes = try? FileManager.default.attributesOfItem(atPath: path)
         return attributes?[.modificationDate] as? Date
     }
+
+    /// Bump the poke file's modification date, exactly like the Stop hook's
+    /// `touch` does. Used by `clawd jump` to simulate Claude finishing a turn so
+    /// the mascot hops on demand.
+    static func poke() throws {
+        let directory = (path as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        // Writing (creating/overwriting) advances the modification date, which is
+        // all the helper watches; the file's contents are irrelevant.
+        try Data().write(to: URL(fileURLWithPath: path))
+    }
 }

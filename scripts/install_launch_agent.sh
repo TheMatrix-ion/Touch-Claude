@@ -14,6 +14,22 @@ cp "$ROOT_DIR/bin/ClaudeTouchBar" "$INSTALL_BIN"
 chmod +x "$INSTALL_BIN"
 mkdir -p "$HOME/Library/LaunchAgents"
 
+# Install the `clawd` command so the user can show/hide the mascot on demand
+# (`clawd wake` / `clawd sleep` / `clawd auto`). Prefer a PATH dir that already
+# exists; fall back to ~/bin.
+CLAWD_LINK=""
+for dir in "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin"; do
+  if [[ -d "$dir" && -w "$dir" ]]; then
+    CLAWD_LINK="$dir/clawd"
+    break
+  fi
+done
+if [[ -z "$CLAWD_LINK" ]]; then
+  mkdir -p "$HOME/bin"
+  CLAWD_LINK="$HOME/bin/clawd"
+fi
+ln -sf "$INSTALL_BIN" "$CLAWD_LINK"
+
 cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -53,4 +69,6 @@ launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 || launchctl kickstart "$SERVI
 
 echo "Installed LaunchAgent at $PLIST_PATH"
 echo "Installed binary at $INSTALL_BIN"
+echo "Installed clawd command at $CLAWD_LINK"
 echo "Open Claude in a terminal — the Touch Bar should show the Claude mark."
+echo "Show/hide on demand:  clawd wake  |  clawd sleep  |  clawd auto"

@@ -18,9 +18,11 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         touchBar.defaultItemIdentifiers = [Self.itemIdentifier]
     }
 
-    /// Push the bar onto the Touch Bar. Safe to call repeatedly: re-asserting an
-    /// already-visible bar is how we recover after the user taps the system "✕"
-    /// close button (which removes our bar without notifying us).
+    /// Push the bar onto the Touch Bar. Called once on the running edge (see
+    /// `AppDelegate.applyPresence`) — we deliberately do *not* re-assert it every
+    /// poll, because a system modal Touch Bar steals the bar back and would break
+    /// the user's taps on brightness/volume and the system "✕" close button.
+    /// Presenting with a system tray item lets the user re-summon it themselves.
     func present() {
         let selectors = [
             "presentSystemModalTouchBar:systemTrayItemIdentifier:",
