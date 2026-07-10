@@ -1,5 +1,11 @@
 import Foundation
 
+enum PetPresentation {
+    static func hungerLevel(fromDebt hungerDebt: Double) -> Double {
+        min(100, max(0, 100 - hungerDebt))
+    }
+}
+
 enum PetCondition: String, Codable {
     case healthy
     case hungry
@@ -21,7 +27,7 @@ enum PetCondition: String, Codable {
 
     static func touchBarMetrics(from state: PetState) -> String {
         let health = Int(state.health.rounded())
-        let hunger = Int(state.hunger.rounded())
+        let hunger = Int(PetPresentation.hungerLevel(fromDebt: state.hunger).rounded())
         let stamina = Int(state.stamina.rounded())
         return "♥\(health)  🍖\(hunger)  ⚡\(stamina)"
     }
@@ -96,7 +102,9 @@ struct PetCLI {
                 let result = try store.transaction(at: timestamp) { state, engine in
                     try engine.feed(&state, at: timestamp)
                 }
-                output("clawd ate: hunger \(number(result.hungerBefore)) → \(number(result.hungerAfter)); free feeds left today: \(result.freeFeedsRemaining)")
+                let hungerBefore = PetPresentation.hungerLevel(fromDebt: result.hungerBefore)
+                let hungerAfter = PetPresentation.hungerLevel(fromDebt: result.hungerAfter)
+                output("clawd ate: hunger \(number(hungerBefore)) → \(number(hungerAfter)); free feeds left today: \(result.freeFeedsRemaining)")
             case "sleep":
                 guard arguments.count == 1 else { throw CLIError.usage }
                 try store.transaction(at: timestamp) { state, engine in
@@ -152,7 +160,7 @@ struct PetCLI {
             alive: !state.isDead,
             ageSeconds: Int(state.age(at: now)),
             health: state.health,
-            hunger: state.hunger,
+            hunger: PetPresentation.hungerLevel(fromDebt: state.hunger),
             stamina: state.stamina,
             sleepingUntil: state.sleepUntil,
             freeFeedsRemaining: max(0, store.engine.rules.freeFeedsPerDay - state.daily.freeFeedsUsed),
@@ -172,7 +180,7 @@ struct PetCLI {
         }
 
         output("clawd #\(snapshot.generation) — \(snapshot.condition.rawValue), age \(duration(snapshot.ageSeconds))")
-        output("health \(number(snapshot.health))/100  hunger \(number(snapshot.hunger))  stamina \(number(snapshot.stamina))/100")
+        output("health \(number(snapshot.health))/100  hunger \(number(snapshot.hunger))/100  stamina \(number(snapshot.stamina))/100")
         output("today: \(snapshot.dailyWorkEvents) work events, \(Int(snapshot.dailyEffectiveTokens.rounded())) effective tokens, \(snapshot.freeFeedsRemaining)/3 free feeds left")
         if !snapshot.alive { output("run `clawd hatch` to start again") }
     }

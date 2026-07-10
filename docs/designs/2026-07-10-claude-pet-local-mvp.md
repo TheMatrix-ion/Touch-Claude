@@ -15,7 +15,9 @@ they can be added later.
 ## Confirmed Rules
 
 - Stats: age, health, hunger, stamina.
-- New pet: health 100, hunger 20, stamina 100.
+- New pet: health 100, internal hunger debt 20, stamina 100. All user-facing
+  hunger values use `clamp(100 - hungerDebt, 0, 100)`, so the initial display is
+  80, a full pet is 100, and starving is 0.
 - One successful user prompt triggers one gameplay work event and two visual
   hops. User interruption and failed API turns do not count.
 - Subagent token usage is included in the parent prompt; subagents do not create

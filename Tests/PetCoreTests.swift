@@ -431,9 +431,13 @@ struct PetCoreTests {
     static func testPetConditionLabels() throws {
         var state = engine.hatch(at: start)
         try expect(
-            PetCondition.touchBarMetrics(from: state) == "♥100  🍖20  ⚡100",
+            PetCondition.touchBarMetrics(from: state) == "♥100  🍖80  ⚡100",
             "Touch Bar must show health, hunger, and stamina"
         )
+        try expectApprox(PetPresentation.hungerLevel(fromDebt: 0), 100)
+        try expectApprox(PetPresentation.hungerLevel(fromDebt: 20), 80)
+        try expectApprox(PetPresentation.hungerLevel(fromDebt: 100), 0)
+        try expectApprox(PetPresentation.hungerLevel(fromDebt: 150), 0)
         try expect(PetCondition.derive(from: state, at: start) == .healthy, "healthy condition")
 
         state.hunger = 70
