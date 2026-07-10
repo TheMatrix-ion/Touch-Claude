@@ -447,6 +447,10 @@ struct PetCoreTests {
         state.health = 100
         try engine.sleep(&state, at: start)
         try expect(PetCondition.derive(from: state, at: start) == .sleeping, "sleeping condition")
+        try expect(
+            PetCondition.touchBarText(from: state, at: start) == "sleeping",
+            "sleeping Touch Bar must hide all three metrics"
+        )
         state.sleepUntil = nil
         state.hunger = 100
         try expect(PetCondition.derive(from: state, at: start) == .starving, "starving condition")

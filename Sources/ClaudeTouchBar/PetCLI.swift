@@ -25,6 +25,10 @@ enum PetCondition: String, Codable {
         let stamina = Int(state.stamina.rounded())
         return "♥\(health)  🍖\(hunger)  ⚡\(stamina)"
     }
+
+    static func touchBarText(from state: PetState, at now: Date) -> String {
+        derive(from: state, at: now) == .sleeping ? "sleeping" : touchBarMetrics(from: state)
+    }
 }
 
 private struct PetStatusSnapshot: Encodable {

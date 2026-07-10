@@ -30,7 +30,7 @@ final class ClaudeLogoView: NSView {
 
     func update(state: PetState, at now: Date) {
         let condition = PetCondition.derive(from: state, at: now)
-        statusLabel.stringValue = PetCondition.touchBarMetrics(from: state)
+        statusLabel.stringValue = PetCondition.touchBarText(from: state, at: now)
         switch condition {
         case .healthy: statusLabel.textColor = .white
         case .hungry, .tired: statusLabel.textColor = .systemYellow
