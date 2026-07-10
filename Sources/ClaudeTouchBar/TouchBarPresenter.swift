@@ -11,6 +11,8 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     private let touchBar = NSTouchBar()
     private let logoView = ClaudeLogoView()
     private(set) var isPresented = false
+    private var pendingBounces = 0
+    private var bounceInProgress = false
 
     override init() {
         super.init()
@@ -23,24 +25,35 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     /// poll, because a system modal Touch Bar steals the bar back and would break
     /// the user's taps on brightness/volume and the system "✕" close button.
     /// Presenting with a system tray item lets the user re-summon it themselves.
-    func present() {
+    @discardableResult
+    func present() -> Bool {
         let selectors = [
             "presentSystemModalTouchBar:systemTrayItemIdentifier:",
             "presentSystemModalFunctionBar:systemTrayItemIdentifier:",
         ]
         guard performTouchBarClassSelector(selectors, first: touchBar, second: Self.trayIdentifier as NSString) else {
-            return
+            return false
         }
         isPresented = true
+        return true
     }
 
-    /// Play the mascot's "Claude finished" hop (no-op if not visible).
-    func bounce() {
-        guard isPresented else { return }
-        logoView.bounce()
+    func update(state: PetState, at now: Date) {
+        logoView.update(state: state, at: now)
+    }
+
+    /// Queue one two-hop animation per completed player prompt. Events are
+    /// serialized instead of restarting an in-flight animation.
+    func enqueueBounces(_ count: Int) {
+        guard isPresented, count > 0 else { return }
+        pendingBounces += count
+        playNextBounceIfNeeded()
     }
 
     func dismiss() {
+        pendingBounces = 0
+        bounceInProgress = false
+        logoView.cancelBounce()
         guard isPresented else { return }
 
         let selectors = [
@@ -49,6 +62,17 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         ]
         _ = performTouchBarClassSelector(selectors, first: touchBar, second: nil)
         isPresented = false
+    }
+
+    private func playNextBounceIfNeeded() {
+        guard isPresented, !bounceInProgress, pendingBounces > 0 else { return }
+        pendingBounces -= 1
+        bounceInProgress = true
+        logoView.bounce { [weak self] in
+            guard let self else { return }
+            self.bounceInProgress = false
+            self.playNextBounceIfNeeded()
+        }
     }
 
     func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem? {

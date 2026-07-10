@@ -4,13 +4,13 @@ import AppKit
 /// wordmark.
 final class ClaudeLogoView: NSView {
     private let mascot = PixelImageView(image: ClaudePixelImage.image)
-    private let wordmark = NSTextField(labelWithString: "Claude")
+    private let wordmark = NSTextField(labelWithString: "clawd · happy")
 
     // Render the mascot at the natural aspect ratio of the source sprite.
     private let mascotHeight: CGFloat = 24
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 120, height: 30))
+        super.init(frame: NSRect(x: 0, y: 0, width: 165, height: 30))
         setupViews()
     }
 
@@ -20,17 +20,35 @@ final class ClaudeLogoView: NSView {
     }
 
     /// Play the "Claude finished" hop.
-    func bounce() {
-        mascot.bounce()
+    func bounce(completion: @escaping () -> Void) {
+        mascot.bounce(completion: completion)
+    }
+
+    func cancelBounce() {
+        mascot.cancelBounce()
+    }
+
+    func update(state: PetState, at now: Date) {
+        let condition = PetCondition.derive(from: state, at: now)
+        wordmark.stringValue = PetCondition.touchBarText(from: state, at: now)
+        switch condition {
+        case .healthy: wordmark.textColor = .white
+        case .hungry, .tired: wordmark.textColor = .systemYellow
+        case .critical: wordmark.textColor = .systemOrange
+        case .sleeping: wordmark.textColor = .systemBlue
+        case .starving, .dead: wordmark.textColor = .systemRed
+        }
     }
 
     private func setupViews() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
 
-        wordmark.font = .systemFont(ofSize: 14, weight: .semibold)
+        wordmark.font = .systemFont(ofSize: 12.5, weight: .semibold)
         wordmark.textColor = .white
         wordmark.alignment = .left
+        wordmark.lineBreakMode = .byTruncatingTail
+        wordmark.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         wordmark.translatesAutoresizingMaskIntoConstraints = false
 
         mascot.translatesAutoresizingMaskIntoConstraints = false
@@ -66,16 +84,16 @@ private final class PixelImageView: NSView {
     private var bounceOffset: CGFloat = 0
     private var bounceTimer: Timer?
     private var bounceStart: Date?
-    // The "Claude finished" nudge: a few rounds of a quick double-hop, with a
-    // short pause between rounds so it reads as repeated taps for attention.
+    // One completed prompt is exactly one quick double-hop.
     private let bounceAmplitude: CGFloat = 5
     private let hopsPerRound: Double = 2
-    private let rounds: Int = 3
+    private let rounds: Int = 1
     private let roundActiveDuration: TimeInterval = 0.55
     private let roundPauseDuration: TimeInterval = 0.22
 
     private var roundTotalDuration: TimeInterval { roundActiveDuration + roundPauseDuration }
     private var bounceTotalDuration: TimeInterval { roundTotalDuration * Double(rounds) }
+    private var completion: (() -> Void)?
 
     init(image: NSImage) {
         self.image = image
@@ -87,10 +105,10 @@ private final class PixelImageView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func bounce() {
-        // Restart from the beginning even if a nudge is already playing.
+    func bounce(completion: @escaping () -> Void) {
+        if bounceTimer != nil { stopBounce(invokeCompletion: false) }
+        self.completion = completion
         bounceStart = Date()
-        guard bounceTimer == nil else { return }
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.tickBounce()
         }
@@ -98,14 +116,18 @@ private final class PixelImageView: NSView {
         bounceTimer = timer
     }
 
+    func cancelBounce() {
+        stopBounce(invokeCompletion: false)
+    }
+
     private func tickBounce() {
         guard let start = bounceStart else {
-            stopBounce()
+            stopBounce(invokeCompletion: true)
             return
         }
         let elapsed = Date().timeIntervalSince(start)
         guard elapsed < bounceTotalDuration else {
-            stopBounce()
+            stopBounce(invokeCompletion: true)
             return
         }
 
@@ -121,12 +143,15 @@ private final class PixelImageView: NSView {
         needsDisplay = true
     }
 
-    private func stopBounce() {
+    private func stopBounce(invokeCompletion: Bool) {
+        let finished = completion
+        completion = nil
         bounceTimer?.invalidate()
         bounceTimer = nil
         bounceStart = nil
         bounceOffset = 0
         needsDisplay = true
+        if invokeCompletion { finished?() }
     }
 
     override func draw(_ dirtyRect: NSRect) {

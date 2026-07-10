@@ -1,94 +1,231 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private struct Evaluation {
+        let now: Date
+        let running: Bool
+        let mode: Mode
+        let modeChangedAt: Date?
+        let state: PetState?
+        let bounceEvents: [URL]
+        let errors: [Error]
+    }
+
     private let presenter = TouchBarPresenter()
+    private let store = PetStore()
+    private let engine = PetEngine()
+    private let stopQueue = StopEventQueue()
+    private let workQueue = DispatchQueue(label: "com.zhihu.claude-touchbar.worker", qos: .utility)
     private let pollInterval: TimeInterval = 1.5
+    private let checkpointInterval: TimeInterval = 60
 
     private var pollTimer: Timer?
-    // Only bounce for pokes newer than launch, so a stale poke file never fires
-    // a spurious hop on startup.
-    private var pokeThreshold = Date()
-    // The last visibility we actually applied. We act only on *changes*, so the
-    // modal bar is never re-asserted every poll — re-asserting is what stole the
-    // Touch Bar from brightness/volume and defeated the "✕" close button.
-    // nil = nothing applied yet (first poll).
+    private var evaluationInFlight = false
+    private var forceOfflineNextEvaluation = false
+    private var systemSleeping = false
+
+    // These are accessed only on workQueue (or while the main thread holds a
+    // synchronous barrier on workQueue).
+    private var lastCheckpointAt: Date?
+    private var lastWallSample: Date?
+    private var lastUptimeSample: TimeInterval?
+
+    // Presentation is edge-triggered so brightness/volume and the system close
+    // button are not stolen back on every poll.
     private var lastAppliedShow: Bool?
-    // Modification date of the mode file the last time we saw it, used to detect
-    // a freshly issued `clawd wake/sleep/auto` command.
     private var lastModeChange: Date?
+    private var nextPresentRetryAt: Date?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // No Dock icon, no menu bar — a silent background helper.
         NSApp.setActivationPolicy(.accessory)
 
-        // Detect on a background queue so spawning pgrep never stutters the UI.
-        evaluatePresence()
+        let workspaceNotifications = NSWorkspace.shared.notificationCenter
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(systemWillSleep(_:)),
+            name: NSWorkspace.willSleepNotification,
+            object: nil
+        )
+        workspaceNotifications.addObserver(
+            self,
+            selector: #selector(systemDidWake(_:)),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
+
+        // The gap since the last persisted checkpoint happened while the helper
+        // was not running, so the pet was sleeping for that interval.
+        evaluatePresence(forceOffline: true)
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             self?.evaluatePresence()
         }
-        if let pollTimer {
-            RunLoop.main.add(pollTimer, forMode: .common)
-        }
+        if let pollTimer { RunLoop.main.add(pollTimer, forMode: .common) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         pollTimer?.invalidate()
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        checkpointSynchronously(passage: systemSleeping ? .offline : .online)
         presenter.dismiss()
     }
 
-    private func evaluatePresence() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            let running = ClaudeProcessMonitor.isRunning()
-            let pokeDate = PokeSignal.lastModified()
-            let mode = ModeSignal.read()
-            DispatchQueue.main.async {
-                guard let self else { return }
-                self.applyPresence(running: running, mode: mode.mode, modeChangedAt: mode.changedAt)
-                self.handlePoke(pokeDate, running: running)
+    @objc private func systemWillSleep(_ notification: Notification) {
+        checkpointSynchronously(passage: .online)
+        systemSleeping = true
+    }
+
+    @objc private func systemDidWake(_ notification: Notification) {
+        systemSleeping = false
+        evaluatePresence(forceOffline: true)
+    }
+
+    private func checkpointSynchronously(passage: TimePassage) {
+        let now = Date()
+        workQueue.sync {
+            do {
+                _ = try store.advance(at: now, passage: passage)
+                lastCheckpointAt = now
+                lastWallSample = now
+                lastUptimeSample = ProcessInfo.processInfo.systemUptime
+            } catch {
+                Log.debug("pet checkpoint failed: \(error)")
             }
         }
     }
 
-    private func handlePoke(_ pokeDate: Date?, running: Bool) {
-        Log.debug("poll: running=\(running) poke=\(pokeDate.map { "\($0.timeIntervalSince1970)" } ?? "nil") threshold=\(pokeThreshold.timeIntervalSince1970) presented=\(presenter.isPresented)")
-        guard let pokeDate, pokeDate > pokeThreshold else { return }
-        pokeThreshold = pokeDate
-        Log.debug("poke ADVANCED -> bounce (running=\(running), presented=\(presenter.isPresented))")
-        // Hop whenever the mascot is on screen. `bounce()` no-ops when hidden, so
-        // this covers both the real Stop-hook poke (Claude still running) and a
-        // `clawd jump` test while the bar is force-shown via `clawd wake`.
-        presenter.bounce()
+    private func evaluatePresence(forceOffline: Bool = false) {
+        if forceOffline { forceOfflineNextEvaluation = true }
+        guard !evaluationInFlight else { return }
+
+        let applyOfflinePassage = forceOfflineNextEvaluation
+        forceOfflineNextEvaluation = false
+        evaluationInFlight = true
+
+        workQueue.async { [weak self] in
+            guard let self else { return }
+            let now = Date()
+            let uptime = ProcessInfo.processInfo.systemUptime
+            let inferredSleep = self.inferSystemSleep(now: now, uptime: uptime)
+            var errors: [Error] = []
+
+            let passage: TimePassage = (applyOfflinePassage || inferredSleep) ? .offline : .online
+            if passage == .offline
+                || self.lastCheckpointAt == nil
+                || now.timeIntervalSince(self.lastCheckpointAt!) >= self.checkpointInterval
+            {
+                do {
+                    _ = try self.store.advance(at: now, passage: passage)
+                    self.lastCheckpointAt = now
+                } catch {
+                    errors.append(error)
+                }
+            }
+
+            errors.append(contentsOf: self.stopQueue.processDue(at: now))
+
+            var state: PetState?
+            do {
+                if var projected = try self.store.snapshot() {
+                    self.engine.advance(&projected, to: now, passage: .online)
+                    state = projected
+                } else {
+                    state = try self.store.advance(at: now, passage: passage)
+                    self.lastCheckpointAt = now
+                }
+            } catch {
+                errors.append(error)
+            }
+
+            let running = ClaudeProcessMonitor.isRunning()
+            let mode = ModeSignal.read()
+            let evaluation = Evaluation(
+                now: now,
+                running: running,
+                mode: mode.mode,
+                modeChangedAt: mode.changedAt,
+                state: state,
+                bounceEvents: PokeSignal.pending(),
+                errors: errors
+            )
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.evaluationInFlight = false
+                for error in evaluation.errors { Log.debug("pet refresh failed: \(error)") }
+                if let state = evaluation.state {
+                    self.presenter.update(state: state, at: evaluation.now)
+                }
+                self.applyPresence(
+                    running: evaluation.running,
+                    mode: evaluation.mode,
+                    modeChangedAt: evaluation.modeChangedAt,
+                    now: evaluation.now
+                )
+                self.handleBounceEvents(evaluation.bounceEvents)
+
+                // A wake notification may arrive while a prior evaluation is
+                // running. Do not lose its offline/sleep accounting request.
+                if self.forceOfflineNextEvaluation { self.evaluatePresence() }
+            }
+        }
     }
 
-    private func applyPresence(running: Bool, mode: Mode, modeChangedAt: Date?) {
-        // Did the user just run `clawd wake/sleep/auto`? A freshly-touched mode
-        // file forces a re-apply, so `clawd wake` brings the mascot back even if
-        // we lost track of it (e.g. the user minimized it with the system "✕",
-        // which removes our bar without telling us).
+    private func inferSystemSleep(now: Date, uptime: TimeInterval) -> Bool {
+        defer {
+            lastWallSample = now
+            lastUptimeSample = uptime
+        }
+        guard let previousWall = lastWallSample, let previousUptime = lastUptimeSample else {
+            return false
+        }
+        let wallDelta = now.timeIntervalSince(previousWall)
+        let uptimeDelta = uptime - previousUptime
+        return uptimeDelta < 0 || wallDelta - uptimeDelta > max(5, pollInterval * 2)
+    }
+
+    private func handleBounceEvents(_ urls: [URL]) {
+        var consumed = 0
+        for url in urls {
+            do {
+                try PokeSignal.consume(url)
+                consumed += 1
+            } catch {
+                Log.debug("failed to consume bounce event: \(error)")
+            }
+        }
+        presenter.enqueueBounces(consumed)
+    }
+
+    private func applyPresence(running: Bool, mode: Mode, modeChangedAt: Date?, now: Date) {
         var commandIssued = false
         if let modeChangedAt, modeChangedAt != lastModeChange {
             lastModeChange = modeChangedAt
-            // On the very first poll there's nothing to "recover", so a pre-existing
-            // mode file is applied through the normal change path below, not forced.
             commandIssued = lastAppliedShow != nil
         }
 
         let shouldShow: Bool
         switch mode {
-        case .wake:  shouldShow = true      // always show
-        case .sleep: shouldShow = false     // always hide
-        case .auto:  shouldShow = running   // follow Claude
+        case .wake: shouldShow = true
+        case .sleep: shouldShow = false
+        case .auto: shouldShow = running
         }
 
-        // Act only on a change (or a fresh command). This is the whole fix: we
-        // never re-assert the modal bar every poll, so taps on brightness/volume
-        // and the system "✕" are no longer stolen back.
         guard commandIssued || shouldShow != lastAppliedShow else { return }
-        lastAppliedShow = shouldShow
         if shouldShow {
-            presenter.present()
+            if !commandIssued, let retryAt = nextPresentRetryAt, now < retryAt { return }
+            if presenter.present() {
+                lastAppliedShow = true
+                nextPresentRetryAt = nil
+            } else {
+                // Do not cache a failed private-selector call as success. Retry
+                // at a low cadence while all CLI/game state remains functional.
+                lastAppliedShow = nil
+                nextPresentRetryAt = now.addingTimeInterval(10)
+            }
         } else {
             presenter.dismiss()
+            lastAppliedShow = false
+            nextPresentRetryAt = nil
         }
     }
 }

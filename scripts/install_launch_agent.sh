@@ -7,16 +7,20 @@ AGENT_ID="com.zhihu.claude-touchbar"
 PLIST_PATH="$HOME/Library/LaunchAgents/$AGENT_ID.plist"
 APP_HOME="$HOME/.claude-touchbar"
 INSTALL_BIN="$APP_HOME/bin/ClaudeTouchBar"
+INSTALL_TMP="$APP_HOME/bin/.ClaudeTouchBar.install.$$"
 
 "$SCRIPT_DIR/build.sh"
 mkdir -p "$APP_HOME/bin"
-cp "$ROOT_DIR/bin/ClaudeTouchBar" "$INSTALL_BIN"
-chmod +x "$INSTALL_BIN"
+chmod 700 "$APP_HOME" "$APP_HOME/bin"
+trap 'rm -f "$INSTALL_TMP"' EXIT
+cp "$ROOT_DIR/bin/ClaudeTouchBar" "$INSTALL_TMP"
+chmod 755 "$INSTALL_TMP"
+mv -f "$INSTALL_TMP" "$INSTALL_BIN"
+trap - EXIT
 mkdir -p "$HOME/Library/LaunchAgents"
 
-# Install the `clawd` command so the user can show/hide the mascot on demand
-# (`clawd wake` / `clawd sleep` / `clawd auto`). Prefer a PATH dir that already
-# exists; fall back to ~/bin.
+# Install the `clawd` command. Prefer a PATH directory that already exists;
+# fall back to ~/bin. Never overwrite an unrelated command.
 CLAWD_LINK=""
 for dir in "$HOME/bin" "/opt/homebrew/bin" "/usr/local/bin"; do
   if [[ -d "$dir" && -w "$dir" ]]; then
@@ -28,7 +32,16 @@ if [[ -z "$CLAWD_LINK" ]]; then
   mkdir -p "$HOME/bin"
   CLAWD_LINK="$HOME/bin/clawd"
 fi
-ln -sf "$INSTALL_BIN" "$CLAWD_LINK"
+if [[ -e "$CLAWD_LINK" || -L "$CLAWD_LINK" ]]; then
+  if [[ ! -L "$CLAWD_LINK" || "$(readlink "$CLAWD_LINK")" != "$INSTALL_BIN" ]]; then
+    echo "Refusing to replace unrelated command at $CLAWD_LINK" >&2
+    exit 1
+  fi
+fi
+ln -sfn "$INSTALL_BIN" "$CLAWD_LINK"
+
+# Install or migrate the Claude Code Stop hook after the binary is in place.
+python3 "$SCRIPT_DIR/configure_stop_hook.py"
 
 cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -67,8 +80,15 @@ fi
 launchctl enable "$SERVICE" >/dev/null 2>&1 || true
 launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 || launchctl kickstart "$SERVICE" >/dev/null 2>&1 || true
 
+if ! launchctl print "$SERVICE" >/dev/null 2>&1; then
+  echo "Failed to register $SERVICE with launchd" >&2
+  echo "The binary and hook are installed, but the background helper is not running." >&2
+  exit 1
+fi
+
 echo "Installed LaunchAgent at $PLIST_PATH"
 echo "Installed binary at $INSTALL_BIN"
 echo "Installed clawd command at $CLAWD_LINK"
-echo "Open Claude in a terminal — the Touch Bar should show the Claude mark."
-echo "Show/hide on demand:  clawd wake  |  clawd sleep  |  clawd auto"
+echo "Open a new Claude Code session, then run: clawd status"
+echo "Pet actions: clawd feed | clawd sleep | clawd wake | clawd hatch"
+echo "Display control: clawd view show | clawd view hide | clawd view auto"
