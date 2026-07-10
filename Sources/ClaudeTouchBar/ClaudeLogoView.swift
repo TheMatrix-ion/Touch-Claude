@@ -7,7 +7,7 @@ final class ClaudeLogoView: NSView {
     private let statusLabel = NSTextField(labelWithString: "♥100  🍖20  ⚡100")
 
     // Render the mascot at the natural aspect ratio of the source sprite.
-    private let mascotHeight: CGFloat = 24
+    private let mascotHeight: CGFloat = 27
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 190, height: 30))
