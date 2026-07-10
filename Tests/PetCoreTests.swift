@@ -430,25 +430,29 @@ struct PetCoreTests {
 
     static func testPetConditionLabels() throws {
         var state = engine.hatch(at: start)
-        try expect(PetCondition.touchBarText(from: state, at: start) == "clawd · happy", "healthy label")
+        try expect(
+            PetCondition.touchBarMetrics(from: state) == "♥100  🍖20  ⚡100",
+            "Touch Bar must show health, hunger, and stamina"
+        )
+        try expect(PetCondition.derive(from: state, at: start) == .healthy, "healthy condition")
 
         state.hunger = 70
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("hungry"), "hungry label")
+        try expect(PetCondition.derive(from: state, at: start) == .hungry, "hungry condition")
         state.hunger = 20
         state.stamina = 10
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("tired"), "tired label")
+        try expect(PetCondition.derive(from: state, at: start) == .tired, "tired condition")
         state.stamina = 100
         state.health = 20
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("weak"), "critical label")
+        try expect(PetCondition.derive(from: state, at: start) == .critical, "critical condition")
         state.health = 100
         try engine.sleep(&state, at: start)
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("sleeping"), "sleeping label")
+        try expect(PetCondition.derive(from: state, at: start) == .sleeping, "sleeping condition")
         state.sleepUntil = nil
         state.hunger = 100
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("STARVING"), "starving label")
+        try expect(PetCondition.derive(from: state, at: start) == .starving, "starving condition")
         state.health = 0
         state.diedAt = start
-        try expect(PetCondition.touchBarText(from: state, at: start).contains("RIP"), "dead label")
+        try expect(PetCondition.derive(from: state, at: start) == .dead, "dead condition")
     }
 
     static func testFirstStopTimestampSkew() throws {

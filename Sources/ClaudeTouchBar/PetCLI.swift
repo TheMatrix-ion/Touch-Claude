@@ -19,16 +19,11 @@ enum PetCondition: String, Codable {
         return .healthy
     }
 
-    static func touchBarText(from state: PetState, at now: Date) -> String {
-        switch derive(from: state, at: now) {
-        case .healthy: return "clawd · happy"
-        case .hungry: return "clawd · hungry \(Int(state.hunger.rounded()))"
-        case .tired: return "clawd · tired \(Int(state.stamina.rounded()))"
-        case .critical: return "clawd · weak \(Int(state.health.rounded()))"
-        case .sleeping: return "clawd · sleeping"
-        case .starving: return "clawd · STARVING"
-        case .dead: return "clawd · RIP"
-        }
+    static func touchBarMetrics(from state: PetState) -> String {
+        let health = Int(state.health.rounded())
+        let hunger = Int(state.hunger.rounded())
+        let stamina = Int(state.stamina.rounded())
+        return "♥\(health)  🍖\(hunger)  ⚡\(stamina)"
     }
 }
 

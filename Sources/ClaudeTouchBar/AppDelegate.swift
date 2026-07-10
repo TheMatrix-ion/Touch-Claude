@@ -152,6 +152,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.evaluationInFlight = false
                 for error in evaluation.errors { Log.debug("pet refresh failed: \(error)") }
+                // Token settlement happens on workQueue before this snapshot is
+                // read. Refresh all three metrics before starting the two hops.
                 if let state = evaluation.state {
                     self.presenter.update(state: state, at: evaluation.now)
                 }

@@ -1,16 +1,16 @@
 import AppKit
 
-/// The content shown on the Touch Bar: the pixel-art Claude mascot plus a
-/// wordmark.
+/// The content shown on the Touch Bar: the pixel-art Claude mascot plus health,
+/// hunger, and stamina.
 final class ClaudeLogoView: NSView {
     private let mascot = PixelImageView(image: ClaudePixelImage.image)
-    private let wordmark = NSTextField(labelWithString: "clawd · happy")
+    private let statusLabel = NSTextField(labelWithString: "♥100  🍖20  ⚡100")
 
     // Render the mascot at the natural aspect ratio of the source sprite.
     private let mascotHeight: CGFloat = 24
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 165, height: 30))
+        super.init(frame: NSRect(x: 0, y: 0, width: 190, height: 30))
         setupViews()
     }
 
@@ -30,13 +30,13 @@ final class ClaudeLogoView: NSView {
 
     func update(state: PetState, at now: Date) {
         let condition = PetCondition.derive(from: state, at: now)
-        wordmark.stringValue = PetCondition.touchBarText(from: state, at: now)
+        statusLabel.stringValue = PetCondition.touchBarMetrics(from: state)
         switch condition {
-        case .healthy: wordmark.textColor = .white
-        case .hungry, .tired: wordmark.textColor = .systemYellow
-        case .critical: wordmark.textColor = .systemOrange
-        case .sleeping: wordmark.textColor = .systemBlue
-        case .starving, .dead: wordmark.textColor = .systemRed
+        case .healthy: statusLabel.textColor = .white
+        case .hungry, .tired: statusLabel.textColor = .systemYellow
+        case .critical: statusLabel.textColor = .systemOrange
+        case .sleeping: statusLabel.textColor = .systemBlue
+        case .starving, .dead: statusLabel.textColor = .systemRed
         }
     }
 
@@ -44,12 +44,12 @@ final class ClaudeLogoView: NSView {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
 
-        wordmark.font = .systemFont(ofSize: 12.5, weight: .semibold)
-        wordmark.textColor = .white
-        wordmark.alignment = .left
-        wordmark.lineBreakMode = .byTruncatingTail
-        wordmark.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        wordmark.translatesAutoresizingMaskIntoConstraints = false
+        statusLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        statusLabel.textColor = .white
+        statusLabel.alignment = .left
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
 
         mascot.translatesAutoresizingMaskIntoConstraints = false
 
@@ -57,7 +57,7 @@ final class ClaudeLogoView: NSView {
         let aspect = imageSize.height > 0 ? imageSize.width / imageSize.height : 1
         let mascotWidth = (mascotHeight * aspect).rounded()
 
-        let stack = NSStackView(views: [mascot, wordmark])
+        let stack = NSStackView(views: [mascot, statusLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
