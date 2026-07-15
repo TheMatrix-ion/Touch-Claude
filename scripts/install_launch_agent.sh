@@ -51,7 +51,7 @@ cat > "$PLIST_PATH" <<EOF
   <string>$AGENT_ID</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$INSTALL_BIN</string>
+    <string>$APP_EXECUTABLE</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
