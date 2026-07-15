@@ -11,7 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let errors: [Error]
     }
 
-    private let presenter = TouchBarPresenter()
+    private let touchBarPresenter = TouchBarPresenter()
+    private let desktopPresenter = DesktopPetPresenter()
     private let store = PetStore()
     private let engine = PetEngine()
     private let stopQueue = StopEventQueue()
@@ -66,7 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pollTimer?.invalidate()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         checkpointSynchronously(passage: systemSleeping ? .offline : .online)
-        presenter.dismiss()
+        touchBarPresenter.dismiss()
+        desktopPresenter.dismiss()
     }
 
     @objc private func systemWillSleep(_ notification: Notification) {
@@ -155,7 +157,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Token settlement happens on workQueue before this snapshot is
                 // read. Refresh all three metrics before starting the two hops.
                 if let state = evaluation.state {
-                    self.presenter.update(state: state, at: evaluation.now)
+                    self.touchBarPresenter.update(state: state, at: evaluation.now)
+                    self.desktopPresenter.update(state: state, at: evaluation.now)
                 }
                 self.applyPresence(
                     running: evaluation.running,
@@ -195,7 +198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Log.debug("failed to consume bounce event: \(error)")
             }
         }
-        presenter.enqueueBounces(consumed)
+        touchBarPresenter.enqueueBounces(consumed)
+        desktopPresenter.enqueueBounces(consumed)
     }
 
     private func applyPresence(running: Bool, mode: Mode, modeChangedAt: Date?, now: Date) {
@@ -212,10 +216,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .auto: shouldShow = running
         }
 
+        // The desktop window has no private API failure mode, so keep it in sync
+        // independently while preserving the Touch Bar's edge-triggered retries.
+        if shouldShow {
+            desktopPresenter.present()
+        } else {
+            desktopPresenter.dismiss()
+        }
+
         guard commandIssued || shouldShow != lastAppliedShow else { return }
         if shouldShow {
             if !commandIssued, let retryAt = nextPresentRetryAt, now < retryAt { return }
-            if presenter.present() {
+            if touchBarPresenter.present() {
                 lastAppliedShow = true
                 nextPresentRetryAt = nil
             } else {
@@ -225,7 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 nextPresentRetryAt = now.addingTimeInterval(10)
             }
         } else {
-            presenter.dismiss()
+            touchBarPresenter.dismiss()
             lastAppliedShow = false
             nextPresentRetryAt = nil
         }

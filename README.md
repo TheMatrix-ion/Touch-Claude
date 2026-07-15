@@ -1,6 +1,6 @@
 # Touch Claude
 
-让 Claude Code 住进 Touch Bar，变成一只会饿、会累、需要吃饭和睡觉的本地电子宠物。每当 Claude 成功回答完一个问题，小人会跳两下；这次回答以及它调用的 subagent 所消耗的 token，会转化为宠物的饥饿和体力消耗。
+让 Claude Code 变成一只悬浮在 macOS 桌面和 Touch Bar 上的本地电子宠物。它会饿、会累，需要吃饭和睡觉；每当 Claude 成功回答完一个问题，小人会跳两下，这次回答以及它调用的 subagent 所消耗的 token，会转化为宠物的饥饿和体力消耗。
 
 ![Touch Claude 在 Touch Bar 上](assets/hero.png)
 
@@ -9,7 +9,8 @@
 ## 玩法
 
 - 初始属性：健康 100、饥饿 80、体力 100，年龄从孵化时间开始计算。饥饿值 100 表示吃饱，0 表示极度饥饿。
-- Touch Bar 常驻显示 `♥健康  🍖饥饿  ⚡体力`，睡眠时只显示 `sleeping`；每次回答完成时先结算 token、刷新三个指标，再跳两下。
+- 透明桌面小人始终浮在普通窗口上方，可以拖动并记住位置；Touch Bar 同时保留。两端显示 `♥健康  🍖饥饿  ⚡体力`，睡眠时只显示 `sleeping`。
+- 每次回答完成时先结算 token、同步刷新桌面和 Touch Bar，再让两端各跳两下；玩法只结算一次。
 - 一次成功的用户问题只结算一次工作事件并跳两下；用户中断或失败的 API 请求不结算。subagent token 会计入父问题，但不会额外触发跳跃。
 - 每次 `feed` 增加 30 点饥饿值，最高显示 100；每个本地自然日前三次成功喂食免费。饥饿值高于 90 时会拒绝喂食，且不消耗免费次数。
 - 清醒时饥饿值每小时减少 0.5、体力每小时减少 2；睡眠时饥饿值每小时减少 0.25、体力每小时恢复 12.5。
@@ -36,7 +37,7 @@ Touch Claude 只从本机 Claude Code transcript 中读取 prompt/session 标识
 
 ## 安装
 
-需要一台带 Touch Bar 的 MacBook Pro，并将 `系统设置 → 键盘 → 触控栏 → 触控栏显示` 设为“App 控制”。
+桌面宠物可运行在普通 Mac 上。带 Touch Bar 的 MacBook Pro 还可以将 `系统设置 → 键盘 → 触控栏 → 触控栏显示` 设为“App 控制”，同时显示 Touch Bar 版本。
 
 ```bash
 ./scripts/install_launch_agent.sh
@@ -44,7 +45,7 @@ Touch Claude 只从本机 Claude Code transcript 中读取 prompt/session 标识
 
 安装脚本会：
 
-1. 编译并安装后台 helper 和 `clawd` 命令；
+1. 编译并将 `Touch Claude.app` 安装到 `~/Applications`，同时安装 `clawd` 命令；
 2. 安装开机自启的 LaunchAgent；
 3. 写入 Claude Code `Stop` hook，并自动备份 `~/.claude/settings.json`；
 4. 将旧版只负责触发动画的 poke hook 原位升级为宠物结算 hook，同时保留其他 hooks。
@@ -59,9 +60,9 @@ clawd feed                   # 喂食：饥饿 -30，每天前三次成功喂食
 clawd sleep                  # 让宠物睡觉；不会隐藏 Touch Bar
 clawd wake                   # 提前叫醒宠物
 clawd hatch                  # 宠物死亡后重新孵化
-clawd view show              # 始终显示 Touch Bar 宠物
-clawd view hide              # 隐藏 Touch Bar 宠物
-clawd view auto              # 跟随 Claude Code 进程自动显示或隐藏
+clawd view show              # 始终显示桌面和 Touch Bar 宠物
+clawd view hide              # 隐藏桌面和 Touch Bar 宠物
+clawd view auto              # 两端跟随 Claude Code 进程自动显示或隐藏
 ```
 
 玩家不能手动执行 jump。`_record-stop` 是 Claude Code hook 使用的内部命令，不属于公开玩法。
@@ -83,7 +84,7 @@ clawd view show
 clawd status
 ```
 
-然后在新开的 Claude Code 会话里问一个问题。回答完成时小人应跳两下，随后再次运行 `clawd status`，确认工作次数、token、饥饿和体力只结算一次。
+确认桌面右下角出现透明、可拖动的小人；拖动后重启 helper，位置应保持不变。然后在新开的 Claude Code 会话里问一个问题。回答完成时桌面和 Touch Bar 小人应各跳两下，随后再次运行 `clawd status`，确认工作次数、token、饥饿和体力只结算一次。
 
 ## 卸载
 
@@ -100,6 +101,7 @@ clawd status
 ```text
 Touch-Claude/
 ├─ Sources/        Swift + AppKit helper、宠物规则和 CLI
+├─ Resources/      macOS 应用的 Info.plist
 ├─ Tests/          本地确定性测试
 ├─ scripts/        构建、测试、安装与卸载脚本
 ├─ docs/           设计文档

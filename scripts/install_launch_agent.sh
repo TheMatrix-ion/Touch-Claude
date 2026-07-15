@@ -6,25 +6,16 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 AGENT_ID="com.zhihu.claude-touchbar"
 PLIST_PATH="$HOME/Library/LaunchAgents/$AGENT_ID.plist"
 APP_HOME="$HOME/.claude-touchbar"
+APPLICATIONS_DIR="$HOME/Applications"
+INSTALL_APP="$APPLICATIONS_DIR/Touch Claude.app"
+APP_EXECUTABLE="$INSTALL_APP/Contents/MacOS/ClaudeTouchBar"
 INSTALL_BIN="$APP_HOME/bin/ClaudeTouchBar"
-INSTALL_TMP="$APP_HOME/bin/.ClaudeTouchBar.install.$$"
-INSTALL_ASSETS="$APP_HOME/assets"
 
 "$SCRIPT_DIR/build.sh"
-mkdir -p "$APP_HOME/bin" "$INSTALL_ASSETS"
-chmod 700 "$APP_HOME" "$APP_HOME/bin" "$INSTALL_ASSETS"
-trap 'rm -f "$INSTALL_TMP"' EXIT
-cp "$ROOT_DIR/bin/ClaudeTouchBar" "$INSTALL_TMP"
-chmod 755 "$INSTALL_TMP"
-mv -f "$INSTALL_TMP" "$INSTALL_BIN"
-trap - EXIT
-cp "$ROOT_DIR/assets/claude-pixel-transparent.png" "$INSTALL_ASSETS/claude-pixel-transparent.png"
-cp "$ROOT_DIR/assets/claude-distressed.png" "$INSTALL_ASSETS/claude-distressed.png"
-cp "$ROOT_DIR/assets/claude-sleeping.png" "$INSTALL_ASSETS/claude-sleeping.png"
-chmod 600 \
-  "$INSTALL_ASSETS/claude-pixel-transparent.png" \
-  "$INSTALL_ASSETS/claude-distressed.png" \
-  "$INSTALL_ASSETS/claude-sleeping.png"
+mkdir -p "$APP_HOME/bin" "$APPLICATIONS_DIR"
+chmod 700 "$APP_HOME" "$APP_HOME/bin"
+ditto "$ROOT_DIR/bin/Touch Claude.app" "$INSTALL_APP"
+ln -sfn "$APP_EXECUTABLE" "$INSTALL_BIN"
 mkdir -p "$HOME/Library/LaunchAgents"
 
 # Install the `clawd` command. Prefer a PATH directory that already exists;
@@ -95,8 +86,8 @@ if ! launchctl print "$SERVICE" >/dev/null 2>&1; then
 fi
 
 echo "Installed LaunchAgent at $PLIST_PATH"
-echo "Installed binary at $INSTALL_BIN"
-echo "Installed mascot assets at $INSTALL_ASSETS"
+echo "Installed app at $INSTALL_APP"
+echo "Installed helper link at $INSTALL_BIN"
 echo "Installed clawd command at $CLAWD_LINK"
 echo "Open a new Claude Code session, then run: clawd status"
 echo "Pet actions: clawd feed | clawd sleep | clawd wake | clawd hatch"

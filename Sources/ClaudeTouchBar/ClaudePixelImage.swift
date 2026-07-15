@@ -5,21 +5,26 @@ enum ClaudePixelImage {
     static let image = load(named: "claude-pixel-transparent.png")
 
     static func load(named filename: String) -> NSImage {
-        let url = assetDirectory.appendingPathComponent(filename)
-        guard let image = NSImage(contentsOf: url) else {
-            Log.debug("could not load mascot asset at \(url.path)")
-            return NSImage(size: NSSize(width: 68, height: 59))
+        for directory in assetDirectories {
+            let url = directory.appendingPathComponent(filename)
+            if let image = NSImage(contentsOf: url) { return image }
         }
-        return image
+        Log.debug("could not load mascot asset \(filename)")
+        return NSImage(size: NSSize(width: 68, height: 59))
     }
 
-    private static let assetDirectory: URL = {
+    private static let assetDirectories: [URL] = {
+        var directories: [URL] = []
+        if let resources = Bundle.main.resourceURL {
+            directories.append(resources)
+        }
         let executable = Bundle.main.executableURL
             ?? URL(fileURLWithPath: CommandLine.arguments[0])
-        return executable
+        directories.append(executable
             .resolvingSymlinksInPath()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("assets", isDirectory: true)
+            .appendingPathComponent("assets", isDirectory: true))
+        return directories
     }()
 }
