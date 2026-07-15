@@ -2,12 +2,12 @@ import AppKit
 
 /// Transparent desktop presentation of the same pet state shown in the Touch Bar.
 final class DesktopPetView: NSView {
-    static let preferredSize = NSSize(width: 220, height: 166)
+    static let preferredSize = NSSize(width: 190, height: 142)
 
     private let sprite = PetSpriteView(
         image: ClaudePixelImage.image,
-        bounceAmplitude: 14,
-        renderedSize: NSSize(width: 136, height: 118)
+        bounceAmplitude: 12,
+        renderedSize: NSSize(width: 116, height: 100)
     )
     private let statusContainer = NSView()
     private let healthMetric = StatusMetricView(icon: "♥", value: "100")
@@ -104,7 +104,7 @@ final class DesktopPetView: NSView {
 
         statusContainer.wantsLayer = true
         statusContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
-        statusContainer.layer?.cornerRadius = 11
+        statusContainer.layer?.cornerRadius = 10
         statusContainer.layer?.masksToBounds = true
         statusContainer.translatesAutoresizingMaskIntoConstraints = false
 
@@ -114,7 +114,7 @@ final class DesktopPetView: NSView {
         metricsStack.translatesAutoresizingMaskIntoConstraints = false
 
         sleepingLabel.cell = VerticallyCenteredTextFieldCell(textCell: sleepingLabel.stringValue)
-        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
         sleepingLabel.alignment = .center
         sleepingLabel.textColor = .systemBlue
         sleepingLabel.isHidden = true
@@ -127,12 +127,12 @@ final class DesktopPetView: NSView {
         NSLayoutConstraint.activate([
             sprite.topAnchor.constraint(equalTo: topAnchor),
             sprite.centerXAnchor.constraint(equalTo: centerXAnchor),
-            sprite.widthAnchor.constraint(equalToConstant: 136),
-            sprite.heightAnchor.constraint(equalToConstant: 132),
+            sprite.widthAnchor.constraint(equalToConstant: 116),
+            sprite.heightAnchor.constraint(equalToConstant: 112),
             statusContainer.topAnchor.constraint(equalTo: sprite.bottomAnchor, constant: 2),
             statusContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            statusContainer.widthAnchor.constraint(equalToConstant: 188),
-            statusContainer.heightAnchor.constraint(equalToConstant: 24),
+            statusContainer.widthAnchor.constraint(equalToConstant: 166),
+            statusContainer.heightAnchor.constraint(equalToConstant: 22),
             metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 6),
             metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -6),
             metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 3),
@@ -141,7 +141,7 @@ final class DesktopPetView: NSView {
             hungerMetric.widthAnchor.constraint(equalTo: staminaMetric.widthAnchor),
             sleepingLabel.centerXAnchor.constraint(equalTo: statusContainer.centerXAnchor),
             sleepingLabel.centerYAnchor.constraint(equalTo: statusContainer.centerYAnchor),
-            sleepingLabel.heightAnchor.constraint(equalToConstant: 18),
+            sleepingLabel.heightAnchor.constraint(equalToConstant: 16),
         ])
     }
 }
@@ -156,12 +156,12 @@ private final class StatusMetricView: NSView {
         super.init(frame: .zero)
 
         iconLabel.cell = VerticallyCenteredTextFieldCell(textCell: icon)
-        iconLabel.font = .systemFont(ofSize: 12)
+        iconLabel.font = .systemFont(ofSize: 11)
         iconLabel.alignment = .center
         iconLabel.textColor = .white
 
         valueLabel.cell = VerticallyCenteredTextFieldCell(textCell: value)
-        valueLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
         valueLabel.textColor = .white
         valueLabel.alignment = .center
 
@@ -173,10 +173,10 @@ private final class StatusMetricView: NSView {
         addSubview(contentStack)
 
         NSLayoutConstraint.activate([
-            iconLabel.widthAnchor.constraint(equalToConstant: 16),
-            iconLabel.heightAnchor.constraint(equalToConstant: 18),
-            valueLabel.widthAnchor.constraint(equalToConstant: 32),
-            valueLabel.heightAnchor.constraint(equalToConstant: 18),
+            iconLabel.widthAnchor.constraint(equalToConstant: 15),
+            iconLabel.heightAnchor.constraint(equalToConstant: 16),
+            valueLabel.widthAnchor.constraint(equalToConstant: 29),
+            valueLabel.heightAnchor.constraint(equalToConstant: 16),
             contentStack.centerXAnchor.constraint(equalTo: centerXAnchor),
             contentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
