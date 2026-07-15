@@ -4,6 +4,9 @@ import AppKit
 final class DesktopPetView: NSView {
     static let preferredSize = NSSize(width: 162, height: 121)
 
+    var onFeed: (() -> Void)?
+    var onSleep: (() -> Void)?
+
     private let sprite = PetSpriteView(
         image: ClaudePixelImage.image,
         bounceAmplitude: 10,
@@ -14,9 +17,13 @@ final class DesktopPetView: NSView {
     private let hungerMetric = StatusMetricView(icon: "🍖", value: "80")
     private let staminaMetric = StatusMetricView(icon: "⚡", value: "100")
     private let sleepingLabel = NSTextField(labelWithString: "sleeping")
+    private let feedButton = BubbleButton(title: "Feed")
+    private let sleepButton = BubbleButton(title: "Sleep")
     private lazy var metricsStack = NSStackView(
         views: [healthMetric, hungerMetric, staminaMetric]
     )
+    private lazy var actionStack = NSStackView(views: [feedButton, sleepButton])
+    private var hoverTrackingArea: NSTrackingArea?
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
 
@@ -33,14 +40,44 @@ final class DesktopPetView: NSView {
     override var mouseDownCanMoveWindow: Bool { true }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(point) ? self : nil
+        guard bounds.contains(point) else { return nil }
+        let actionPoint = actionStack.convert(point, from: self)
+        if !actionStack.isHidden, actionStack.bounds.contains(actionPoint) {
+            return actionStack.hitTest(actionPoint) ?? self
+        }
+        return self
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        actionStack.isHidden = false
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        actionStack.isHidden = true
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        actionStack.isHidden = false
+    }
+
     override func mouseDown(with event: NSEvent) {
+        actionStack.isHidden = false
         dragStartMouseLocation = NSEvent.mouseLocation
         dragStartWindowOrigin = window?.frame.origin
     }
@@ -96,6 +133,16 @@ final class DesktopPetView: NSView {
         sprite.cancelBounce()
     }
 
+    @objc private func feedClicked() {
+        actionStack.isHidden = true
+        onFeed?()
+    }
+
+    @objc private func sleepClicked() {
+        actionStack.isHidden = true
+        onSleep?()
+    }
+
     private func setupViews() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
@@ -113,6 +160,16 @@ final class DesktopPetView: NSView {
         metricsStack.spacing = 0
         metricsStack.translatesAutoresizingMaskIntoConstraints = false
 
+        feedButton.target = self
+        feedButton.action = #selector(feedClicked)
+        sleepButton.target = self
+        sleepButton.action = #selector(sleepClicked)
+        actionStack.orientation = .horizontal
+        actionStack.alignment = .centerY
+        actionStack.spacing = 4
+        actionStack.isHidden = true
+        actionStack.translatesAutoresizingMaskIntoConstraints = false
+
         sleepingLabel.cell = VerticallyCenteredTextFieldCell(textCell: sleepingLabel.stringValue)
         sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
         sleepingLabel.alignment = .center
@@ -122,9 +179,16 @@ final class DesktopPetView: NSView {
 
         addSubview(sprite)
         addSubview(statusContainer)
+        addSubview(actionStack)
         statusContainer.addSubview(metricsStack)
         statusContainer.addSubview(sleepingLabel)
         NSLayoutConstraint.activate([
+            actionStack.topAnchor.constraint(equalTo: topAnchor, constant: 2),
+            actionStack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            feedButton.widthAnchor.constraint(equalToConstant: 42),
+            feedButton.heightAnchor.constraint(equalToConstant: 18),
+            sleepButton.widthAnchor.constraint(equalToConstant: 42),
+            sleepButton.heightAnchor.constraint(equalToConstant: 18),
             sprite.topAnchor.constraint(equalTo: topAnchor),
             sprite.centerXAnchor.constraint(equalTo: centerXAnchor),
             sprite.widthAnchor.constraint(equalToConstant: 99),
@@ -143,6 +207,34 @@ final class DesktopPetView: NSView {
             sleepingLabel.centerYAnchor.constraint(equalTo: statusContainer.centerYAnchor),
             sleepingLabel.heightAnchor.constraint(equalToConstant: 16),
         ])
+    }
+}
+
+private final class BubbleButton: NSButton {
+    init(title: String) {
+        super.init(frame: .zero)
+        isBordered = false
+        focusRingType = .none
+        setButtonType(.momentaryPushIn)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.82).cgColor
+        layer?.cornerRadius = 9
+        attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 10, weight: .semibold),
+                .foregroundColor: NSColor.white,
+            ]
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 }
 

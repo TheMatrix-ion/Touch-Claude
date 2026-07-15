@@ -67,6 +67,8 @@ clawd view auto              # 两端跟随 Claude Code 进程自动显示或隐
 
 玩家不能手动执行 jump。`_record-stop` 是 Claude Code hook 使用的内部命令，不属于公开玩法。
 
+桌面版可直接交互：把鼠标移到 clawd 上会出现 `Feed` 和 `Sleep` 气泡，点击即可执行对应动作。
+
 ## 本地测试
 
 ```bash

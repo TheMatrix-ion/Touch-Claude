@@ -1,6 +1,11 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private enum DesktopPetAction: String {
+        case feed
+        case sleep
+    }
+
     private struct Evaluation {
         let now: Date
         let running: Bool
@@ -39,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        desktopPresenter.setActions(
+            onFeed: { [weak self] in self?.performDesktopPetAction(.feed) },
+            onSleep: { [weak self] in self?.performDesktopPetAction(.sleep) }
+        )
 
         let workspaceNotifications = NSWorkspace.shared.notificationCenter
         workspaceNotifications.addObserver(
@@ -201,6 +211,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let bounceCount = consumed * 3
         touchBarPresenter.enqueueBounces(bounceCount)
         desktopPresenter.enqueueBounces(bounceCount)
+    }
+
+    private func performDesktopPetAction(_ action: DesktopPetAction) {
+        let now = Date()
+        workQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                let state = try self.store.transaction(at: now) { state, engine in
+                    switch action {
+                    case .feed:
+                        _ = try engine.feed(&state, at: now)
+                    case .sleep:
+                        try engine.sleep(&state, at: now)
+                    }
+                    return state
+                }
+                self.lastCheckpointAt = now
+                DispatchQueue.main.async { [weak self] in
+                    self?.touchBarPresenter.update(state: state, at: now)
+                    self?.desktopPresenter.update(state: state, at: now)
+                }
+            } catch {
+                Log.debug("desktop \(action.rawValue) failed: \(error)")
+            }
+        }
     }
 
     private func applyPresence(running: Bool, mode: Mode, modeChangedAt: Date?, now: Date) {

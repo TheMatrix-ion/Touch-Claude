@@ -33,6 +33,11 @@ final class DesktopPetPresenter: NSObject, NSWindowDelegate {
         petView.update(state: state, at: now)
     }
 
+    func setActions(onFeed: @escaping () -> Void, onSleep: @escaping () -> Void) {
+        petView.onFeed = onFeed
+        petView.onSleep = onSleep
+    }
+
     func present() {
         guard !isPresented else { return }
         restorePositionIfNeeded()
@@ -81,6 +86,7 @@ final class DesktopPetPresenter: NSObject, NSWindowDelegate {
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
+        panel.acceptsMouseMovedEvents = true
         panel.isMovableByWindowBackground = true
         panel.becomesKeyOnlyIfNeeded = true
         panel.isReleasedWhenClosed = false
