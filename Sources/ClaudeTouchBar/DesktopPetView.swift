@@ -104,7 +104,7 @@ final class DesktopPetView: NSView {
 
         statusContainer.wantsLayer = true
         statusContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
-        statusContainer.layer?.cornerRadius = 13
+        statusContainer.layer?.cornerRadius = 11
         statusContainer.layer?.masksToBounds = true
         statusContainer.translatesAutoresizingMaskIntoConstraints = false
 
@@ -114,7 +114,7 @@ final class DesktopPetView: NSView {
         metricsStack.translatesAutoresizingMaskIntoConstraints = false
 
         sleepingLabel.cell = VerticallyCenteredTextFieldCell(textCell: sleepingLabel.stringValue)
-        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         sleepingLabel.alignment = .center
         sleepingLabel.textColor = .systemBlue
         sleepingLabel.isHidden = true
@@ -131,17 +131,17 @@ final class DesktopPetView: NSView {
             sprite.heightAnchor.constraint(equalToConstant: 132),
             statusContainer.topAnchor.constraint(equalTo: sprite.bottomAnchor, constant: 2),
             statusContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            statusContainer.widthAnchor.constraint(equalToConstant: 204),
-            statusContainer.heightAnchor.constraint(equalToConstant: 28),
-            metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 8),
-            metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -8),
-            metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 4),
-            metricsStack.bottomAnchor.constraint(equalTo: statusContainer.bottomAnchor, constant: -4),
+            statusContainer.widthAnchor.constraint(equalToConstant: 188),
+            statusContainer.heightAnchor.constraint(equalToConstant: 24),
+            metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 6),
+            metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -6),
+            metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 3),
+            metricsStack.bottomAnchor.constraint(equalTo: statusContainer.bottomAnchor, constant: -3),
             healthMetric.widthAnchor.constraint(equalTo: hungerMetric.widthAnchor),
             hungerMetric.widthAnchor.constraint(equalTo: staminaMetric.widthAnchor),
             sleepingLabel.centerXAnchor.constraint(equalTo: statusContainer.centerXAnchor),
             sleepingLabel.centerYAnchor.constraint(equalTo: statusContainer.centerYAnchor),
-            sleepingLabel.heightAnchor.constraint(equalToConstant: 20),
+            sleepingLabel.heightAnchor.constraint(equalToConstant: 18),
         ])
     }
 }
@@ -156,27 +156,27 @@ private final class StatusMetricView: NSView {
         super.init(frame: .zero)
 
         iconLabel.cell = VerticallyCenteredTextFieldCell(textCell: icon)
-        iconLabel.font = .systemFont(ofSize: 13)
+        iconLabel.font = .systemFont(ofSize: 12)
         iconLabel.alignment = .center
         iconLabel.textColor = .white
 
         valueLabel.cell = VerticallyCenteredTextFieldCell(textCell: value)
-        valueLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         valueLabel.textColor = .white
         valueLabel.alignment = .center
 
         let contentStack = NSStackView(views: [iconLabel, valueLabel])
         contentStack.orientation = .horizontal
         contentStack.alignment = .centerY
-        contentStack.spacing = 2
+        contentStack.spacing = 1
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(contentStack)
 
         NSLayoutConstraint.activate([
-            iconLabel.widthAnchor.constraint(equalToConstant: 18),
-            iconLabel.heightAnchor.constraint(equalToConstant: 20),
-            valueLabel.widthAnchor.constraint(equalToConstant: 34),
-            valueLabel.heightAnchor.constraint(equalToConstant: 20),
+            iconLabel.widthAnchor.constraint(equalToConstant: 16),
+            iconLabel.heightAnchor.constraint(equalToConstant: 18),
+            valueLabel.widthAnchor.constraint(equalToConstant: 32),
+            valueLabel.heightAnchor.constraint(equalToConstant: 18),
             contentStack.centerXAnchor.constraint(equalTo: centerXAnchor),
             contentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
