@@ -155,7 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.evaluationInFlight = false
                 for error in evaluation.errors { Log.debug("pet refresh failed: \(error)") }
                 // Token settlement happens on workQueue before this snapshot is
-                // read. Refresh all three metrics before starting the two hops.
+                // read. Refresh all three metrics before starting the queued animations.
                 if let state = evaluation.state {
                     self.touchBarPresenter.update(state: state, at: evaluation.now)
                     self.desktopPresenter.update(state: state, at: evaluation.now)
@@ -198,8 +198,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Log.debug("failed to consume bounce event: \(error)")
             }
         }
-        touchBarPresenter.enqueueBounces(consumed)
-        desktopPresenter.enqueueBounces(consumed)
+        let bounceCount = consumed * 3
+        touchBarPresenter.enqueueBounces(bounceCount)
+        desktopPresenter.enqueueBounces(bounceCount)
     }
 
     private func applyPresence(running: Bool, mode: Mode, modeChangedAt: Date?, now: Date) {

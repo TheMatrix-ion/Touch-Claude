@@ -2,12 +2,12 @@ import AppKit
 
 /// Transparent desktop presentation of the same pet state shown in the Touch Bar.
 final class DesktopPetView: NSView {
-    static let preferredSize = NSSize(width: 190, height: 142)
+    static let preferredSize = NSSize(width: 162, height: 121)
 
     private let sprite = PetSpriteView(
         image: ClaudePixelImage.image,
-        bounceAmplitude: 12,
-        renderedSize: NSSize(width: 116, height: 100)
+        bounceAmplitude: 10,
+        renderedSize: NSSize(width: 99, height: 85)
     )
     private let statusContainer = NSView()
     private let healthMetric = StatusMetricView(icon: "♥", value: "100")
@@ -104,7 +104,7 @@ final class DesktopPetView: NSView {
 
         statusContainer.wantsLayer = true
         statusContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
-        statusContainer.layer?.cornerRadius = 10
+        statusContainer.layer?.cornerRadius = 9
         statusContainer.layer?.masksToBounds = true
         statusContainer.translatesAutoresizingMaskIntoConstraints = false
 
@@ -114,7 +114,7 @@ final class DesktopPetView: NSView {
         metricsStack.translatesAutoresizingMaskIntoConstraints = false
 
         sleepingLabel.cell = VerticallyCenteredTextFieldCell(textCell: sleepingLabel.stringValue)
-        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
         sleepingLabel.alignment = .center
         sleepingLabel.textColor = .systemBlue
         sleepingLabel.isHidden = true
@@ -127,16 +127,16 @@ final class DesktopPetView: NSView {
         NSLayoutConstraint.activate([
             sprite.topAnchor.constraint(equalTo: topAnchor),
             sprite.centerXAnchor.constraint(equalTo: centerXAnchor),
-            sprite.widthAnchor.constraint(equalToConstant: 116),
-            sprite.heightAnchor.constraint(equalToConstant: 112),
+            sprite.widthAnchor.constraint(equalToConstant: 99),
+            sprite.heightAnchor.constraint(equalToConstant: 95),
             statusContainer.topAnchor.constraint(equalTo: sprite.bottomAnchor, constant: 2),
             statusContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            statusContainer.widthAnchor.constraint(equalToConstant: 166),
-            statusContainer.heightAnchor.constraint(equalToConstant: 22),
-            metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 6),
-            metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -6),
-            metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 3),
-            metricsStack.bottomAnchor.constraint(equalTo: statusContainer.bottomAnchor, constant: -3),
+            statusContainer.widthAnchor.constraint(equalToConstant: 144),
+            statusContainer.heightAnchor.constraint(equalToConstant: 20),
+            metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 4),
+            metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -4),
+            metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 2),
+            metricsStack.bottomAnchor.constraint(equalTo: statusContainer.bottomAnchor, constant: -2),
             healthMetric.widthAnchor.constraint(equalTo: hungerMetric.widthAnchor),
             hungerMetric.widthAnchor.constraint(equalTo: staminaMetric.widthAnchor),
             sleepingLabel.centerXAnchor.constraint(equalTo: statusContainer.centerXAnchor),
@@ -156,12 +156,12 @@ private final class StatusMetricView: NSView {
         super.init(frame: .zero)
 
         iconLabel.cell = VerticallyCenteredTextFieldCell(textCell: icon)
-        iconLabel.font = .systemFont(ofSize: 11)
+        iconLabel.font = .systemFont(ofSize: 10)
         iconLabel.alignment = .center
         iconLabel.textColor = .white
 
         valueLabel.cell = VerticallyCenteredTextFieldCell(textCell: value)
-        valueLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
         valueLabel.textColor = .white
         valueLabel.alignment = .center
 
@@ -173,7 +173,7 @@ private final class StatusMetricView: NSView {
         addSubview(contentStack)
 
         NSLayoutConstraint.activate([
-            iconLabel.widthAnchor.constraint(equalToConstant: 15),
+            iconLabel.widthAnchor.constraint(equalToConstant: 13),
             iconLabel.heightAnchor.constraint(equalToConstant: 16),
             valueLabel.widthAnchor.constraint(equalToConstant: 29),
             valueLabel.heightAnchor.constraint(equalToConstant: 16),
