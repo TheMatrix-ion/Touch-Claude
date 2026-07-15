@@ -9,7 +9,14 @@ final class DesktopPetView: NSView {
         bounceAmplitude: 14,
         renderedSize: NSSize(width: 136, height: 118)
     )
-    private let statusLabel = NSTextField(labelWithString: "♥100  🍖80  ⚡100")
+    private let statusContainer = NSView()
+    private let healthMetric = StatusMetricView(icon: "♥", value: "100")
+    private let hungerMetric = StatusMetricView(icon: "🍖", value: "80")
+    private let staminaMetric = StatusMetricView(icon: "⚡", value: "100")
+    private let sleepingLabel = NSTextField(labelWithString: "sleeping")
+    private lazy var metricsStack = NSStackView(
+        views: [healthMetric, hungerMetric, staminaMetric]
+    )
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
 
@@ -66,7 +73,19 @@ final class DesktopPetView: NSView {
         case .sleeping: textColor = .systemBlue
         case .starving, .dead: textColor = .systemRed
         }
-        setStatusText(PetCondition.touchBarText(from: state, at: now), color: textColor)
+
+        let isSleeping = condition == .sleeping
+        metricsStack.isHidden = isSleeping
+        sleepingLabel.isHidden = !isSleeping
+        sleepingLabel.textColor = textColor
+        guard !isSleeping else { return }
+
+        healthMetric.update(value: Int(state.health.rounded()), color: textColor)
+        hungerMetric.update(
+            value: Int(PetPresentation.hungerLevel(fromDebt: state.hunger).rounded()),
+            color: textColor
+        )
+        staminaMetric.update(value: Int(state.stamina.rounded()), color: textColor)
     }
 
     func bounce(completion: @escaping () -> Void) {
@@ -83,39 +102,106 @@ final class DesktopPetView: NSView {
 
         sprite.translatesAutoresizingMaskIntoConstraints = false
 
-        statusLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
-        statusLabel.alignment = .center
-        statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.drawsBackground = false
-        statusLabel.backgroundColor = .clear
-        statusLabel.isBordered = false
-        statusLabel.isBezeled = false
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        setStatusText(statusLabel.stringValue, color: .white)
+        statusContainer.wantsLayer = true
+        statusContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
+        statusContainer.layer?.cornerRadius = 13
+        statusContainer.layer?.masksToBounds = true
+        statusContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        metricsStack.orientation = .horizontal
+        metricsStack.alignment = .centerY
+        metricsStack.spacing = 0
+        metricsStack.translatesAutoresizingMaskIntoConstraints = false
+
+        sleepingLabel.cell = VerticallyCenteredTextFieldCell(textCell: sleepingLabel.stringValue)
+        sleepingLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        sleepingLabel.alignment = .center
+        sleepingLabel.textColor = .systemBlue
+        sleepingLabel.isHidden = true
+        sleepingLabel.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(sprite)
-        addSubview(statusLabel)
+        addSubview(statusContainer)
+        statusContainer.addSubview(metricsStack)
+        statusContainer.addSubview(sleepingLabel)
         NSLayoutConstraint.activate([
             sprite.topAnchor.constraint(equalTo: topAnchor),
             sprite.centerXAnchor.constraint(equalTo: centerXAnchor),
             sprite.widthAnchor.constraint(equalToConstant: 136),
             sprite.heightAnchor.constraint(equalToConstant: 132),
-            statusLabel.topAnchor.constraint(equalTo: sprite.bottomAnchor, constant: 2),
-            statusLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            statusLabel.widthAnchor.constraint(equalToConstant: 196),
-            statusLabel.heightAnchor.constraint(equalToConstant: 24),
+            statusContainer.topAnchor.constraint(equalTo: sprite.bottomAnchor, constant: 2),
+            statusContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
+            statusContainer.widthAnchor.constraint(equalToConstant: 204),
+            statusContainer.heightAnchor.constraint(equalToConstant: 28),
+            metricsStack.leadingAnchor.constraint(equalTo: statusContainer.leadingAnchor, constant: 8),
+            metricsStack.trailingAnchor.constraint(equalTo: statusContainer.trailingAnchor, constant: -8),
+            metricsStack.topAnchor.constraint(equalTo: statusContainer.topAnchor, constant: 4),
+            metricsStack.bottomAnchor.constraint(equalTo: statusContainer.bottomAnchor, constant: -4),
+            healthMetric.widthAnchor.constraint(equalTo: hungerMetric.widthAnchor),
+            hungerMetric.widthAnchor.constraint(equalTo: staminaMetric.widthAnchor),
+            sleepingLabel.centerXAnchor.constraint(equalTo: statusContainer.centerXAnchor),
+            sleepingLabel.centerYAnchor.constraint(equalTo: statusContainer.centerYAnchor),
+            sleepingLabel.heightAnchor.constraint(equalToConstant: 20),
+        ])
+    }
+}
+
+private final class StatusMetricView: NSView {
+    private let iconLabel: NSTextField
+    private let valueLabel: NSTextField
+
+    init(icon: String, value: String) {
+        iconLabel = NSTextField(labelWithString: icon)
+        valueLabel = NSTextField(labelWithString: value)
+        super.init(frame: .zero)
+
+        iconLabel.cell = VerticallyCenteredTextFieldCell(textCell: icon)
+        iconLabel.font = .systemFont(ofSize: 13)
+        iconLabel.alignment = .center
+        iconLabel.textColor = .white
+
+        valueLabel.cell = VerticallyCenteredTextFieldCell(textCell: value)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        valueLabel.textColor = .white
+        valueLabel.alignment = .center
+
+        let contentStack = NSStackView(views: [iconLabel, valueLabel])
+        contentStack.orientation = .horizontal
+        contentStack.alignment = .centerY
+        contentStack.spacing = 2
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            iconLabel.widthAnchor.constraint(equalToConstant: 18),
+            iconLabel.heightAnchor.constraint(equalToConstant: 20),
+            valueLabel.widthAnchor.constraint(equalToConstant: 34),
+            valueLabel.heightAnchor.constraint(equalToConstant: 20),
+            contentStack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            contentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
-    private func setStatusText(_ text: String, color: NSColor) {
-        statusLabel.attributedStringValue = NSAttributedString(
-            string: text,
-            attributes: [
-                .font: statusLabel.font ?? .monospacedDigitSystemFont(ofSize: 13, weight: .semibold),
-                .foregroundColor: color,
-                .strokeColor: NSColor.black.withAlphaComponent(0.9),
-                .strokeWidth: -5,
-            ]
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func update(value: Int, color: NSColor) {
+        valueLabel.stringValue = String(value)
+        iconLabel.textColor = color
+        valueLabel.textColor = color
+    }
+}
+
+private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        let textHeight = cellSize(forBounds: rect).height
+        return NSRect(
+            x: rect.minX,
+            y: rect.midY - textHeight / 2,
+            width: rect.width,
+            height: textHeight
         )
     }
 }
