@@ -1,20 +1,25 @@
 import AppKit
 
-/// The pixel-art Claude mascot, embedded as base64 so the single binary stays
-/// self-contained (the installer only copies the executable, no asset files).
-/// Source: assets/claude-pixel-transparent.png (68x59, transparent background).
+/// Loads mascot sprites from the `assets` directory next to `bin`.
 enum ClaudePixelImage {
-    static let image: NSImage = {
-        guard
-            let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters),
-            let image = NSImage(data: data)
-        else {
-            return NSImage(size: NSSize(width: 1, height: 1))
+    static let image = load(named: "claude-pixel-transparent.png")
+
+    static func load(named filename: String) -> NSImage {
+        let url = assetDirectory.appendingPathComponent(filename)
+        guard let image = NSImage(contentsOf: url) else {
+            Log.debug("could not load mascot asset at \(url.path)")
+            return NSImage(size: NSSize(width: 68, height: 59))
         }
         return image
-    }()
+    }
 
-    private static let base64 = """
-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
-"""
+    private static let assetDirectory: URL = {
+        let executable = Bundle.main.executableURL
+            ?? URL(fileURLWithPath: CommandLine.arguments[0])
+        return executable
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("assets", isDirectory: true)
+    }()
 }

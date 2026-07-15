@@ -89,6 +89,37 @@ struct PetCoreTests {
         _ = try engine.completeAnswer(&healthy, usage: usage, at: start)
         try expectApprox(healthy.daily.workHealthGained, 0)
 
+        var sleeping = engine.hatch(at: start)
+        try engine.sleep(&sleeping, at: start)
+        let sleepingUsage = AnswerUsage(
+            id: "session:while-sleeping",
+            completedAt: start.addingTimeInterval(1),
+            inputTokens: 0,
+            outputTokens: 1_000,
+            cacheCreationTokens: 0,
+            cacheReadTokens: 0
+        )
+        _ = try engine.completeAnswer(
+            &sleeping,
+            usage: sleepingUsage,
+            at: start.addingTimeInterval(1)
+        )
+        try expect(sleeping.sleepUntil == nil, "new work completion must wake a sleeping pet")
+        try expect(
+            PetCondition.derive(from: sleeping, at: start.addingTimeInterval(1)) == .healthy,
+            "woken pet must switch away from the sleeping expression"
+        )
+
+        try engine.sleep(&sleeping, at: start.addingTimeInterval(2))
+        let duplicateSleepUntil = sleeping.sleepUntil
+        let sleepingDuplicate = try engine.completeAnswer(
+            &sleeping,
+            usage: sleepingUsage,
+            at: start.addingTimeInterval(3)
+        )
+        try expect(sleepingDuplicate.duplicate, "replayed work must remain a duplicate")
+        try expect(sleeping.sleepUntil == duplicateSleepUntil, "duplicate work must not wake a sleeping pet")
+
         let huge = AnswerUsage(
             id: "session:prompt-2",
             completedAt: start,
@@ -439,18 +470,23 @@ struct PetCoreTests {
         try expectApprox(PetPresentation.hungerLevel(fromDebt: 100), 0)
         try expectApprox(PetPresentation.hungerLevel(fromDebt: 150), 0)
         try expect(PetCondition.derive(from: state, at: start) == .healthy, "healthy condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .normal, "healthy expression")
 
         state.hunger = 70
         try expect(PetCondition.derive(from: state, at: start) == .hungry, "hungry condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .distressed, "hungry expression")
         state.hunger = 20
         state.stamina = 10
         try expect(PetCondition.derive(from: state, at: start) == .tired, "tired condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .distressed, "tired expression")
         state.stamina = 100
         state.health = 20
         try expect(PetCondition.derive(from: state, at: start) == .critical, "critical condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .distressed, "critical expression")
         state.health = 100
         try engine.sleep(&state, at: start)
         try expect(PetCondition.derive(from: state, at: start) == .sleeping, "sleeping condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .sleeping, "sleeping expression")
         try expect(
             PetCondition.touchBarText(from: state, at: start) == "sleeping",
             "sleeping Touch Bar must hide all three metrics"
@@ -458,6 +494,7 @@ struct PetCoreTests {
         state.sleepUntil = nil
         state.hunger = 100
         try expect(PetCondition.derive(from: state, at: start) == .starving, "starving condition")
+        try expect(PetCondition.derive(from: state, at: start).expression == .distressed, "starving expression")
         state.health = 0
         state.diedAt = start
         try expect(PetCondition.derive(from: state, at: start) == .dead, "dead condition")

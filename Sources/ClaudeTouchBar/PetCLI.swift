@@ -6,6 +6,12 @@ enum PetPresentation {
     }
 }
 
+enum PetExpression: Equatable {
+    case normal
+    case distressed
+    case sleeping
+}
+
 enum PetCondition: String, Codable {
     case healthy
     case hungry
@@ -14,6 +20,17 @@ enum PetCondition: String, Codable {
     case sleeping
     case starving
     case dead
+
+    var expression: PetExpression {
+        switch self {
+        case .healthy, .dead:
+            return .normal
+        case .hungry, .tired, .critical, .starving:
+            return .distressed
+        case .sleeping:
+            return .sleeping
+        }
+    }
 
     static func derive(from state: PetState, at now: Date) -> PetCondition {
         if state.isDead { return .dead }

@@ -23,7 +23,12 @@ done
 
 rm -f "$PLIST_PATH"
 rm -f "$INSTALL_BIN"
+rm -f \
+  "$APP_HOME/assets/claude-pixel-transparent.png" \
+  "$APP_HOME/assets/claude-distressed.png" \
+  "$APP_HOME/assets/claude-sleeping.png"
 rmdir "$APP_HOME/bin" >/dev/null 2>&1 || true
+rmdir "$APP_HOME/assets" >/dev/null 2>&1 || true
 
 echo "Removed $PLIST_PATH"
 echo "Removed $INSTALL_BIN and its clawd symlink"

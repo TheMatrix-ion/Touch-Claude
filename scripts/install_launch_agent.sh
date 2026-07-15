@@ -8,15 +8,23 @@ PLIST_PATH="$HOME/Library/LaunchAgents/$AGENT_ID.plist"
 APP_HOME="$HOME/.claude-touchbar"
 INSTALL_BIN="$APP_HOME/bin/ClaudeTouchBar"
 INSTALL_TMP="$APP_HOME/bin/.ClaudeTouchBar.install.$$"
+INSTALL_ASSETS="$APP_HOME/assets"
 
 "$SCRIPT_DIR/build.sh"
-mkdir -p "$APP_HOME/bin"
-chmod 700 "$APP_HOME" "$APP_HOME/bin"
+mkdir -p "$APP_HOME/bin" "$INSTALL_ASSETS"
+chmod 700 "$APP_HOME" "$APP_HOME/bin" "$INSTALL_ASSETS"
 trap 'rm -f "$INSTALL_TMP"' EXIT
 cp "$ROOT_DIR/bin/ClaudeTouchBar" "$INSTALL_TMP"
 chmod 755 "$INSTALL_TMP"
 mv -f "$INSTALL_TMP" "$INSTALL_BIN"
 trap - EXIT
+cp "$ROOT_DIR/assets/claude-pixel-transparent.png" "$INSTALL_ASSETS/claude-pixel-transparent.png"
+cp "$ROOT_DIR/assets/claude-distressed.png" "$INSTALL_ASSETS/claude-distressed.png"
+cp "$ROOT_DIR/assets/claude-sleeping.png" "$INSTALL_ASSETS/claude-sleeping.png"
+chmod 600 \
+  "$INSTALL_ASSETS/claude-pixel-transparent.png" \
+  "$INSTALL_ASSETS/claude-distressed.png" \
+  "$INSTALL_ASSETS/claude-sleeping.png"
 mkdir -p "$HOME/Library/LaunchAgents"
 
 # Install the `clawd` command. Prefer a PATH directory that already exists;
@@ -88,6 +96,7 @@ fi
 
 echo "Installed LaunchAgent at $PLIST_PATH"
 echo "Installed binary at $INSTALL_BIN"
+echo "Installed mascot assets at $INSTALL_ASSETS"
 echo "Installed clawd command at $CLAWD_LINK"
 echo "Open a new Claude Code session, then run: clawd status"
 echo "Pet actions: clawd feed | clawd sleep | clawd wake | clawd hatch"

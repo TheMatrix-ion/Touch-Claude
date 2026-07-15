@@ -30,6 +30,7 @@ final class ClaudeLogoView: NSView {
 
     func update(state: PetState, at now: Date) {
         let condition = PetCondition.derive(from: state, at: now)
+        mascot.update(image: ClaudePetImages.image(for: condition.expression))
         statusLabel.stringValue = PetCondition.touchBarText(from: state, at: now)
         switch condition {
         case .healthy: statusLabel.textColor = .white
@@ -79,7 +80,7 @@ final class ClaudeLogoView: NSView {
 /// The animation is driven by a timer + manual redraws (rather than Core
 /// Animation) so it works reliably inside the remotely-rendered Touch Bar.
 private final class PixelImageView: NSView {
-    private let image: NSImage
+    private var image: NSImage
 
     private var bounceOffset: CGFloat = 0
     private var bounceTimer: Timer?
@@ -118,6 +119,15 @@ private final class PixelImageView: NSView {
 
     func cancelBounce() {
         stopBounce(invokeCompletion: false)
+    }
+
+    func update(image: NSImage) {
+        guard self.image !== image else { return }
+        self.image = image
+        needsDisplay = true
+        // Touch Bar content is rendered out of process, so flush passive image
+        // changes immediately instead of waiting for another animation frame.
+        displayIfNeeded()
     }
 
     private func tickBounce() {
