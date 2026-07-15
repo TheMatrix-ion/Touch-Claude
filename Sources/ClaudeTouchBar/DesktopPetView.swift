@@ -58,14 +58,15 @@ final class DesktopPetView: NSView {
     func update(state: PetState, at now: Date) {
         let condition = PetCondition.derive(from: state, at: now)
         sprite.update(image: ClaudePetImages.image(for: condition.expression))
-        statusLabel.stringValue = PetCondition.touchBarText(from: state, at: now)
+        let textColor: NSColor
         switch condition {
-        case .healthy: statusLabel.textColor = .white
-        case .hungry, .tired: statusLabel.textColor = .systemYellow
-        case .critical: statusLabel.textColor = .systemOrange
-        case .sleeping: statusLabel.textColor = .systemBlue
-        case .starving, .dead: statusLabel.textColor = .systemRed
+        case .healthy: textColor = .white
+        case .hungry, .tired: textColor = .systemYellow
+        case .critical: textColor = .systemOrange
+        case .sleeping: textColor = .systemBlue
+        case .starving, .dead: textColor = .systemRed
         }
+        setStatusText(PetCondition.touchBarText(from: state, at: now), color: textColor)
     }
 
     func bounce(completion: @escaping () -> Void) {
@@ -84,13 +85,13 @@ final class DesktopPetView: NSView {
 
         statusLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
         statusLabel.alignment = .center
-        statusLabel.textColor = .white
         statusLabel.lineBreakMode = .byTruncatingTail
         statusLabel.drawsBackground = false
         statusLabel.backgroundColor = .clear
         statusLabel.isBordered = false
         statusLabel.isBezeled = false
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        setStatusText(statusLabel.stringValue, color: .white)
 
         addSubview(sprite)
         addSubview(statusLabel)
@@ -104,5 +105,17 @@ final class DesktopPetView: NSView {
             statusLabel.widthAnchor.constraint(equalToConstant: 196),
             statusLabel.heightAnchor.constraint(equalToConstant: 24),
         ])
+    }
+
+    private func setStatusText(_ text: String, color: NSColor) {
+        statusLabel.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .font: statusLabel.font ?? .monospacedDigitSystemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: color,
+                .strokeColor: NSColor.black.withAlphaComponent(0.9),
+                .strokeWidth: -5,
+            ]
+        )
     }
 }
