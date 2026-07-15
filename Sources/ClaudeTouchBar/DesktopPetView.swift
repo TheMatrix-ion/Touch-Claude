@@ -9,11 +9,7 @@ final class DesktopPetView: NSView {
         bounceAmplitude: 14,
         renderedSize: NSSize(width: 136, height: 118)
     )
-    private let statusLabel: NSTextField = {
-        let field = NSTextField(labelWithString: "♥100  🍖80  ⚡100")
-        field.cell = VerticallyCenteredTextFieldCell(textCell: field.stringValue)
-        return field
-    }()
+    private let statusLabel = NSTextField(labelWithString: "♥100  🍖80  ⚡100")
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
 
@@ -90,11 +86,11 @@ final class DesktopPetView: NSView {
         statusLabel.alignment = .center
         statusLabel.textColor = .white
         statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.drawsBackground = false
+        statusLabel.backgroundColor = .clear
+        statusLabel.isBordered = false
+        statusLabel.isBezeled = false
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.wantsLayer = true
-        statusLabel.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.68).cgColor
-        statusLabel.layer?.cornerRadius = 11
-        statusLabel.layer?.masksToBounds = true
 
         addSubview(sprite)
         addSubview(statusLabel)
@@ -108,19 +104,5 @@ final class DesktopPetView: NSView {
             statusLabel.widthAnchor.constraint(equalToConstant: 196),
             statusLabel.heightAnchor.constraint(equalToConstant: 24),
         ])
-    }
-}
-
-private final class VerticallyCenteredTextFieldCell: NSTextFieldCell {
-    override func drawingRect(forBounds rect: NSRect) -> NSRect {
-        let textHeight = cellSize(forBounds: rect).height
-        let verticalInset = max(0, floor((rect.height - textHeight) / 2) - 1)
-        let centered = NSRect(
-            x: rect.minX,
-            y: rect.minY + verticalInset,
-            width: rect.width,
-            height: textHeight
-        )
-        return super.drawingRect(forBounds: centered)
     }
 }
